@@ -86,7 +86,14 @@ class Grammar(object):
 
   def follows(self, sym):
     temp_follows = set()
-
+    for rule_body in self.rules[sym]:
+      tokens = rule_body.split()
+      k = 0
+      while k < len(tokens):
+        curr_sym = tokens[k]
+        if curr_sym in self.nonterminals:
+          #temp_follows.update(
+          pass
 
   def get_follows(self):
     if self.follows:
@@ -102,4 +109,4 @@ if __name__ == '__main__':
     sys.exit(-1)
   g = Grammar(grammar_def)
   print g.get_firsts()
-  print g.get_follows()
+#  print g.get_follows()
