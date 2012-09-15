@@ -1,0 +1,7 @@
+S ::= I
+S ::= o
+I ::= i ( E ) S L
+L ::= e S
+L ::= epsilon
+E ::= 0
+E ::= 1
