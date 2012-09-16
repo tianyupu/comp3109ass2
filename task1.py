@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 class Grammar(object):
-
   EPSILON = 'epsilon'
   DERIVE_SYM = '::='
   INPUT_END = '$'
@@ -35,9 +34,13 @@ class Grammar(object):
       self.nonterminals.add(nonterm)
 
   def __compute_firsts(self):
-    for sym in self.nonterminals:
-      self.firsts[sym].update(self.first(sym))
-    return self.firsts
+    while True:
+      prev_count = sum([len(s) for s in self.firsts.values()])
+      for sym in self.nonterminals:
+        self.firsts[sym].update(self.first(sym))
+      curr_count = sum([len(s) for s in self.firsts.values()])
+      if prev_count == curr_count:
+        return self.firsts
 
   def first(self, sym):
     temp_first = set()
@@ -71,32 +74,66 @@ class Grammar(object):
         temp_first.add(self.EPSILON)
     return temp_first
 
-  def get_firsts(self):
+  def first_sent(self, sent):
+    temp_first = set()
+    sentence = sent.split()
+    n = len(sentence)
+    if n == 1:
+      sym = sentence[0]
+      return self.first(sym)
+    for i in xrange(n):
+      sym = sentence[i]
+      t = self.first(sym)
+      if self.EPSILON in t:
+        t.remove(self.EPSILON)
+        temp_first.update(t)
+        newsent = ' '.join(sentence[i+1:])
+        if newsent:
+          temp_first.update(self.first_sent(newsent))
+        return temp_first
+      return t
+
+  def get_firsts(self, sym=''):
     if self.firsts:
+      if sym:
+        return self.firsts[sym]
       return self.firsts
     return self.__compute_firsts()
 
   def __compute_follows(self):
     self.follows[self.start_sym].add(self.INPUT_END)
-    for sym in self.nonterminals:
-      if sym == self.start_sym:
-        continue
-      self.follows[sym].update(self.follows(sym))
-    return self.follows
+    while True:
+      prev_count = sum([len(s) for s in self.follows.values()])
+      for sym in self.nonterminals:
+        self.follow(sym)
+      curr_count = sum([len(s) for s in self.follows.values()])
+      if prev_count == curr_count: # nothing to add, so finish
+        return self.follows
 
-  def follows(self, sym):
-    temp_follows = set()
+  def follow(self, sym):
     for rule_body in self.rules[sym]:
       tokens = rule_body.split()
       k = 0
-      while k < len(tokens):
+      n = len(tokens)
+      while k < n:
         curr_sym = tokens[k]
         if curr_sym in self.nonterminals:
-          #temp_follows.update(
-          pass
+          if k == n-1:
+            self.follows[curr_sym].update(self.follows[sym])
+          else:
+            sentence = ' '.join(tokens[k+1:])
+            f = self.first_sent(sentence)
+            if self.EPSILON in f:
+              self.follows[curr_sym].update(self.follows[sym])
+              f.remove(self.EPSILON)
+            self.follows[curr_sym].update(f)
+        k += 1
+    return self.follows[sym]
 
-  def get_follows(self):
+  def get_follows(self, sym=''):
     if self.follows:
+      if sym:
+        return self.follows[sym]
       return self.follows
     return self.__compute_follows()
 
@@ -109,4 +146,4 @@ if __name__ == '__main__':
     sys.exit(-1)
   g = Grammar(grammar_def)
   print g.get_firsts()
-#  print g.get_follows()
+  print g.get_follows()
