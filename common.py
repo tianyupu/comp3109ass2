@@ -22,8 +22,12 @@ class Grammar(object):
   def __processrules(self, rule_list):
     from collections import defaultdict
     self.rules = defaultdict(list)
+    self.rule_order = {}
+    self.rule_index = {}
     for i in xrange(len(rule_list)):
       rule = rule_list[i]
+      self.rule_order[rule] = i
+      self.rule_index[i] = rule
       nonterm, body = rule.split(self.DERIVE_SYM)
       nonterm = nonterm.strip()
       if i == 0:
@@ -96,7 +100,10 @@ class Grammar(object):
       if sym:
         return self.firsts[sym]
       return self.firsts
-    return self.__compute_firsts()
+    self.__compute_firsts()
+    if sym:
+      return self.firsts[sym]
+    return self.firsts
 
   def __compute_follows(self):
     self.follows[self.start_sym].add(self.INPUT_END)
@@ -133,4 +140,100 @@ class Grammar(object):
       if sym:
         return self.follows[sym]
       return self.follows
-    return self.__compute_follows()
+    self.__compute_follows()
+    if sym:
+      return self.follows[sym]
+    return self.follows
+
+  def get_rulenum(self, rule):
+    if rule in self.rule_order:
+      return self.rule_order[rule]
+    return -1
+
+  def get_rule(self, num):
+    if num in self.rule_index:
+      return self.rule_index[num]
+    return ''
+
+  def get_rules(self):
+    return self.rules
+
+  def get_startsym(self):
+    return self.start_sym
+
+  def get_nonterminals(self):
+    return self.nonterminals
+
+class Parser(object):
+  def __init__(self, grammar):
+    self.grammar = grammar
+    self.__create_table()
+
+  def __create_table(self):
+    from collections import defaultdict
+    self.table = defaultdict(dict)
+    rules = self.grammar.get_rules()
+    for rule_head in rules:
+      for rule_body in rules[rule_head]:
+        r = (' %s ' % self.grammar.DERIVE_SYM).join([rule_head, rule_body])
+        ruleno = self.grammar.get_rulenum(r)
+        first = self.grammar.first_sent(rule_body)
+        for sym in first:
+          if sym != self.grammar.EPSILON:
+            v = self.table[rule_head].get(sym)
+            if v and v != ruleno:
+              raise IncorrectGrammar('Grammar is not LL(1)!')
+            self.table[rule_head][sym] = ruleno
+        if self.grammar.EPSILON in first:
+          follow = self.grammar.get_follows(rule_head)
+          for sym in follow:
+            v = self.table[rule_head].get(sym)
+            if v and v != ruleno:
+              raise IncorrectGrammar('Grammar is not LL(1)!')
+            self.table[rule_head][sym] = ruleno
+          if self.grammar.INPUT_END in follow:
+            v = self.table[rule_head].get(self.grammar.INPUT_END)
+            if v and v != ruleno:
+              raise IncorrectGrammar('Grammar is not LL(1)!')
+            self.table[rule_head][self.grammar.INPUT_END] = ruleno
+
+  def get_table(self):
+    return self.table
+
+  def get_rule(self, nonterm, term):
+    ruleno = self.table[nonterm].get(term)
+    if ruleno is not None:
+      return self.grammar.get_rule(ruleno)
+
+  def parse(self, string):
+    from collections import deque
+    stack = deque()
+    stack.appendleft(self.grammar.get_startsym())
+    in_stream = iter(string+"$")
+    curr = in_stream.next()
+    while stack:
+      top = stack[0]
+      if top in self.grammar.get_nonterminals():
+        rule = self.get_rule(top, curr)
+        if rule:
+          stack.popleft()
+          sym, body = rule.split(self.grammar.DERIVE_SYM)
+          body_syms = body.strip().split()
+          body_syms.reverse()
+          stack.extendleft(body_syms)
+        else:
+          return False
+      elif top == curr:
+        if top != self.grammar.INPUT_END:
+          stack.popleft()
+          curr = in_stream.next()
+      elif top == self.grammar.EPSILON:
+        stack.popleft()
+      else:
+        return False
+    if curr != self.grammar.INPUT_END:
+      return False
+    return True
+
+class IncorrectGrammar(Exception):
+  pass
