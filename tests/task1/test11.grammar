@@ -1,0 +1,7 @@
+E ::= T X
+X ::= + E
+X ::= epsilon
+T ::= ( E )
+T ::= 1 Y
+Y ::= * T
+Y ::= epsilon

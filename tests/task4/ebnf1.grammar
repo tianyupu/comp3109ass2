@@ -1,0 +1,3 @@
+S ::= A { B b } e
+A ::= a | epsilon
+B ::= [ c ] d

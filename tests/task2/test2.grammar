@@ -1,0 +1,8 @@
+A ::= B C
+C ::= + B C
+C ::= epsilon
+B ::= D E
+E ::= * D E
+E ::= epsilon
+D ::= ( A )
+D ::= a
