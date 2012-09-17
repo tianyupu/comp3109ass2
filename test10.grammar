@@ -1,8 +1,0 @@
-E ::= - E
-E ::= ( E )
-E ::= V F
-F ::= - E
-F ::= epsilon
-V ::= x W
-W ::= ( E )
-W ::= epsilon
